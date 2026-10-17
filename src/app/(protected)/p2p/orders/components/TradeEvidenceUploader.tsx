@@ -50,6 +50,8 @@ export function TradeEvidenceUploader({
     const { notify } = useNotifications();
     const sig = useSignatureCancellation();
 
+    useEffect(() => () => uploadControllerRef.current?.abort(), []);
+
     // Sync with incoming evidenceUrl prop (e.g. on page refresh or peer update)
     useEffect(() => {
         if (evidenceUrl) {
@@ -120,7 +122,7 @@ export function TradeEvidenceUploader({
     };
 
     const handleUploadToServer = async () => {
-        if (!uploadedFile || !escrowId) return;
+        if (!uploadedFile || !escrowId || uploadControllerRef.current) return;
         const controller = new AbortController();
         uploadControllerRef.current = controller;
         setUploadState('uploading');
