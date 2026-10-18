@@ -3,6 +3,7 @@ import { ApiError, apiFetch, getApiBaseUrl } from "@/lib/api";
 import { getCsrfToken } from "@/lib/api/client";
 import { queryKeys } from "@/lib/queryKeys";
 import { useUser } from "@/features/user/presentation/context/UserContext";
+import { useWalletContext } from "@/features/wallet/presentation/context/WalletContext";
 
 export interface OpenEscrowParams {
     orderId: string;
@@ -43,52 +44,68 @@ export interface EscrowSigningResponse {
 export function useEscrows() {
     const queryClient = useQueryClient();
     const { accessToken, logout } = useUser();
+    const { assertCorrectNetwork } = useWalletContext();
 
     const { mutateAsync: openEscrow } = useMutation({
-        mutationFn: (params: OpenEscrowParams) => apiFetch<EscrowSigningResponse>('/escrows/open', {
-            method: "POST",
-            body: params,
-        }),
+        mutationFn: async (params: OpenEscrowParams) => {
+            await assertCorrectNetwork();
+            return apiFetch<EscrowSigningResponse>('/escrows/open', {
+                method: "POST",
+                body: params,
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
         }
     });
 
     const { mutateAsync: fundEscrow } = useMutation({
-        mutationFn: (params: FundEscrowParams) => apiFetch<EscrowSigningResponse>('/escrows/fund', {
-            method: "POST",
-            body: params,
-        }),
+        mutationFn: async (params: FundEscrowParams) => {
+            await assertCorrectNetwork();
+            return apiFetch<EscrowSigningResponse>('/escrows/fund', {
+                method: "POST",
+                body: params,
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
         }
     });
 
     const { mutateAsync: syncEscrow } = useMutation({
-        mutationFn: (params: SyncEscrowParams) => apiFetch<void>('/escrows/sync', {
-            method: "POST",
-            body: params,
-        }),
+        mutationFn: async (params: SyncEscrowParams) => {
+            await assertCorrectNetwork();
+            return apiFetch<void>('/escrows/sync', {
+                method: "POST",
+                body: params,
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
         }
     });
 
     const { mutateAsync: markFiatSent } = useMutation({
-        mutationFn: ({ escrowId, params }: { escrowId: string, params: FiatSentParams }) => apiFetch<EscrowSigningResponse>(`/escrows/${escrowId}/fiat-sent`, {
-            method: "POST",
-            body: params,
-        }),
+        mutationFn: async ({ escrowId, params }: { escrowId: string, params: FiatSentParams }) => {
+            await assertCorrectNetwork();
+            return apiFetch<EscrowSigningResponse>(`/escrows/${escrowId}/fiat-sent`, {
+                method: "POST",
+                body: params,
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
         }
     });
 
     const { mutateAsync: releaseEscrow } = useMutation({
-        mutationFn: (params: ReleaseEscrowParams) => apiFetch<EscrowSigningResponse>('/escrows/release', {
-            method: "POST",
-            body: params,
-        }),
+        mutationFn: async (params: ReleaseEscrowParams) => {
+            await assertCorrectNetwork();
+            return apiFetch<EscrowSigningResponse>('/escrows/release', {
+                method: "POST",
+                body: params,
+            });
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.orders.all });
         }
@@ -102,6 +119,7 @@ export function useEscrows() {
             onProgress?: (loaded: number, total: number) => void;
             idempotencyKey: string;
         }) => {
+            await assertCorrectNetwork();
             const formData = new FormData();
             formData.append("file", file);
             const csrfToken = await getCsrfToken();

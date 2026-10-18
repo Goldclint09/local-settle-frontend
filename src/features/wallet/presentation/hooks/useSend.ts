@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useUser } from "@/features/user/presentation/context/UserContext";
 import { useWallet } from "@/features/wallet";
+import { getConfiguredStellarNetwork } from "../../config/stellar-network";
 
 export type SendStep =
   | "form"
@@ -31,9 +32,9 @@ export interface SendState {
 
 export function useSend() {
   const { accessToken } = useUser();
-  const { signTransaction } = useWallet();
+  const { signTransaction, assertCorrectNetwork } = useWallet();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
-  const network = process.env.NEXT_PUBLIC_STELLAR_NETWORK ?? "TESTNET";
+  const network = getConfiguredStellarNetwork().toUpperCase();
   const preparedXdrRef = useRef<string | null>(null);
 
   const [state, setState] = useState<SendState>({
@@ -50,6 +51,7 @@ export function useSend() {
       preparedXdrRef.current = null;
 
       try {
+        await assertCorrectNetwork();
         const headers: Record<string, string> = { "Content-Type": "application/json" };
         if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
 
@@ -62,6 +64,10 @@ export function useSend() {
           throw new Error((body as { message?: string })?.message ?? "Could not resolve recipient");
         }
         const recipient: RecipientInfo = await resolveRes.json();
+
+        // Recipient lookup can take long enough for the wallet network to
+        // change. Recheck immediately before asking the backend to prepare XDR.
+        await assertCorrectNetwork();
 
         const prepareBody: { recipient: string; amount: string; asset?: string } = {
           recipient: recipient.address,
@@ -98,7 +104,7 @@ export function useSend() {
         }));
       }
     },
-    [accessToken, apiUrl]
+    [accessToken, apiUrl, assertCorrectNetwork]
   );
 
   const confirmSend = useCallback(async () => {
